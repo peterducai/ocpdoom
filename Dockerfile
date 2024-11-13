@@ -1,11 +1,11 @@
-FROM fedora:37 AS build-ocpdoom
+FROM fedora AS build-ocpdoom
 WORKDIR /go/src/ocpdoom
 ADD go.mod .
 ADD ocpdoom.go .
 RUN dnf install golang -y &&  dnf clean all
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o ocpdoom .
 
-FROM fedora:37 AS build-essentials
+FROM fedora AS build-essentials
 ARG TARGETARCH=amd64
 ARG KUBECTL_VERSION=1.25.4
 RUN dnf update -y && dnf install wget ca-certificates -y
@@ -15,8 +15,8 @@ RUN echo "KUBECTL_VERSION is $KUBECTL_VERSION"
 RUN wget -O /usr/bin/kubectl "https://storage.googleapis.com/kubernetes-release/release/v$KUBECTL_VERSION/bin/linux/$TARGETARCH/kubectl" \
   && chmod +x /usr/bin/kubectl
 
-FROM fedora:37 AS build-doom
-RUN dnf update -y && dnf groupinstall 'Development Tools' -y \
+FROM fedora AS build-doom
+RUN dnf update -y && dnf install cmake make gcc -y \
   && dnf install -y \
   sdl12-compat \
   SDL_mixer-devel \
@@ -27,7 +27,7 @@ ADD /dockerdoom /dockerdoom
 WORKDIR /dockerdoom/trunk
 RUN ./configure && make && make install
 
-FROM fedora:37 as build-converge
+FROM fedora as build-converge
 WORKDIR /build
 RUN mkdir -p \
   /build/app \
@@ -38,7 +38,7 @@ COPY --from=build-essentials /usr/bin/kubectl /build/usr/bin
 COPY --from=build-ocpdoom /go/src/ocpdoom/ocpdoom /build/usr/bin
 COPY --from=build-doom /usr/local/games/psdoom /build/usr/local/games
 
-FROM fedora:37
+FROM fedora
 ARG VNCPASSWORD=openshift
 ENV NAMESAPCE=monsters
 RUN dnf update -y \
